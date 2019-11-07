@@ -1,17 +1,20 @@
 package uk.cg0.okuru
 
-import android.content.Intent
-import android.net.Uri
-import android.os.Bundle
-import android.os.Parcelable
+import android.content.ClipboardManager
+import android.content.Context
 import androidx.appcompat.app.AppCompatActivity
-import com.android.volley.Request
-import com.android.volley.Response
-import com.android.volley.toolbox.ImageRequest
-import com.android.volley.toolbox.StringRequest
-import com.android.volley.toolbox.Volley
+import android.os.Bundle
+import android.content.Intent
 import kotlinx.android.synthetic.main.activity_upload.*
-
+import android.text.method.ScrollingMovementMethod
+import android.os.StrictMode
+import android.provider.MediaStore
+import android.view.View
+import com.github.kittinunf.fuel.Fuel
+import com.github.kittinunf.fuel.core.BlobDataPart
+import org.json.JSONObject
+import android.content.ClipData
+import android.widget.Toast
 
 class UploadActivity : AppCompatActivity() {
 
@@ -27,34 +30,44 @@ class UploadActivity : AppCompatActivity() {
                 // Handle other intents, such as being started from the home screen
             }
         }
+        paste_button.setOnClickListener(View.OnClickListener {
+            val myClipboard: ClipboardManager = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            val myClip: ClipData = ClipData.newPlainText("text", upload.text)
+            myClipboard.setPrimaryClip(myClip)
+            Toast.makeText(this, "Link copied", Toast.LENGTH_LONG).show()
+        })
 
     }
 
     private fun handleSendImage(intent: Intent) {
-        (intent.getParcelableExtra<Parcelable>(Intent.EXTRA_STREAM) as? Uri)?.let {
+        //TODO: move to a seperate thread
+        val policy = StrictMode.ThreadPolicy.Builder().permitAll().build()
+        StrictMode.setThreadPolicy(policy)
+        upload.text = intent.clipData?.getItemAt(0)?.uri.toString()
+        imageView.setImageURI(intent.clipData?.getItemAt(0)?.uri)
+        upload.movementMethod = ScrollingMovementMethod()
+        val inputStream = contentResolver.openInputStream(intent.clipData?.getItemAt(0)?.uri!!)
+        val projection = arrayOf(MediaStore.MediaColumns.DISPLAY_NAME)
+        val metaCursor = contentResolver.query(intent.clipData?.getItemAt(0)?.uri!!, projection, null, null, null)
+        var filename=""
 
-
-            // Instantiate the RequestQueue.
-            val queue = Volley.newRequestQueue(this)
-            val url = "https://fuckingweeb.site"
-
-            // Request a string response from the provided URL.
-
-            val imageRequest = ()
-            val stringRequest = StringRequest(
-                Request.Method.GET, url,
-                Response.Listener<String> { response ->
-                    // Display the first 500 characters of the response string.
-                    textView.text = "Response is: $response"
-                },
-                Response.ErrorListener { textView.text = "That didn't work!" })
-
-            // Add the request to the RequestQueue.
-            queue.add(stringRequest)
-
+        if (metaCursor != null) {
+            try {
+                if (metaCursor!!.moveToFirst()) {
+                    filename = metaCursor!!.getString(0)
+                }
+            } finally {
+                metaCursor!!.close()
+            }
         }
+        filename_text.text=filename
+        val (_,response, _)= Fuel.upload("endpoint")
+            .add(BlobDataPart(inputStream!!, name="files[]",filename = filename))
+            .header("token", "token")
+            .response()
+        upload.text =JSONObject(String(response.data)).getJSONArray("files").getJSONObject(0).getString("url").replace("fucking", "uwu")
     }
-
-
-
 }
+
+
+
