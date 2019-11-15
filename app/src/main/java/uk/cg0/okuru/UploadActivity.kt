@@ -12,6 +12,7 @@ import android.os.AsyncTask
 import java.net.MalformedURLException
 import android.view.View
 import org.json.JSONObject
+import android.provider.OpenableColumns
 
 
 class UploadActivity : AppCompatActivity() {
@@ -46,44 +47,45 @@ class UploadActivity : AppCompatActivity() {
         StrictMode.setThreadPolicy(policy)
          */
         upload.text = intent.clipData?.getItemAt(0)?.uri.toString()
-        imageView.setImageURI(intent.clipData?.getItemAt(0)?.uri)
         upload.movementMethod = ScrollingMovementMethod()
         val inputStream = contentResolver.openInputStream(intent.clipData?.getItemAt(0)?.uri!!)
-        val projection = arrayOf(MediaStore.MediaColumns.DISPLAY_NAME)
-        val metaCursor = contentResolver.query(
+        var size:Long=0
+        contentResolver.query(
             intent.clipData?.getItemAt(0)?.uri!!,
-            projection,
+            null,
             null,
             null,
             null
-        )
-        var filename = ""
-        if (metaCursor != null) {
-            try {
-                if (metaCursor!!.moveToFirst()) {
-                    filename = metaCursor!!.getString(0)
-                    filename_text.text = filename
-                }
-            } finally {
-                metaCursor!!.close()
-            }
+        )?.use { cursor ->
+                val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
+                cursor.moveToFirst()
+                filename_text.text = cursor.getString(nameIndex)
+                size=cursor.getLong(sizeIndex)
+                filesize_text.text =size.toString()
         }
 
         try {
             val (_, response, _) = Fuel.upload("endpoint")
-                .add(BlobDataPart(inputStream!!, name = "files[]", filename = filename))
+                .add(BlobDataPart(inputStream!!, name = "files[]", filename = filename_text.text.toString()))
                 .header("token", "token")
+                .requestProgress{ readBytes,_ ->
+                    if(readBytes<size){
+                        val progress=(readBytes/size)*100
+                        upload.text="Upload progress: $progress%"
+                    }
+                }
                 .response()
             if (response.statusCode == 200) {
-                    upload.text =
-                    JSONObject(String(response.data)).getJSONArray("files").getJSONObject(0).getString("url")
-                    runOnUiThread {paste_button.visibility = View.VISIBLE}
+                    upload.text = JSONObject(String(response.data)).getJSONArray("files").getJSONObject(0).getString("url")
+                    runOnUiThread {
+                        imageView.setImageURI(intent.clipData?.getItemAt(0)?.uri)
+                        paste_button.visibility = View.VISIBLE
+                    }
             } else {
-                upload.text = String.format(
-                    "%s: %s",
-                    response.statusCode.toString(),
-                    response.responseMessage
-                )
+                val code=response.statusCode.toString()
+                val message=response.responseMessage
+                upload.text = "$code: $message"
             }
         } catch (mue: MalformedURLException) {
             upload.text = "Invalid upload URL"
