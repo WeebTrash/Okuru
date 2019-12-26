@@ -17,8 +17,19 @@ android {
     }
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            it.resValue 'string', 'URL', PROD_URL
+            it.resValue 'string', 'SAFE_TOKEN', PROD_TOKEN
+            it.resValue 'string', 'APP_NAME', PROD_NAME
+
+        }
+        debug {
+            minifyEnabled false
+            debuggable true
+            it.resValue 'string', 'URL', TESTING_URL
+            it.resValue 'string', 'SAFE_TOKEN', TESTING_TOKEN
+            it.resValue 'string', 'APP_NAME', TESTING_NAME
         }
     }
 }
