@@ -15,18 +15,39 @@ android {
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
+    signingConfigs {
+        config {
+            keyAlias KEY_ALIAS
+            keyPassword KEY_PASSWORD
+            storeFile file(KEY_PATH)
+            storePassword STORE_PASSWORD
+        }
+    }
     buildTypes {
         release {
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            it.resValue 'string', 'URL', PROD_URL
-            it.resValue 'string', 'SAFE_TOKEN', PROD_TOKEN
+            it.resValue 'string', 'URL', RELEASE_URL
+            it.resValue 'string', 'SAFE_TOKEN', RELEASE_TOKEN
+            it.resValue 'string', 'APP_NAME', RELEASE_NAME
+
+        }
+        beta {
+            minifyEnabled false
+            debuggable false
+            signingConfig signingConfigs.config
+            applicationIdSuffix = '.beta'
+            versionNameSuffix = '-beta'
+            it.resValue 'string', 'URL', RELEASE_URL
+            it.resValue 'string', 'SAFE_TOKEN', RELEASE_TOKEN
             it.resValue 'string', 'APP_NAME', PROD_NAME
 
         }
         debug {
             minifyEnabled false
             debuggable true
+            applicationIdSuffix = '.debug'
+            versionNameSuffix = '-debug'
             it.resValue 'string', 'URL', TESTING_URL
             it.resValue 'string', 'SAFE_TOKEN', TESTING_TOKEN
             it.resValue 'string', 'APP_NAME', TESTING_NAME
